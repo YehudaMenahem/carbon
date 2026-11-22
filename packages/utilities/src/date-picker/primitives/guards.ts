@@ -118,6 +118,26 @@ export const guards: GuardMap = {
     },
 
     /**
+     * Guard for restarting a range after a completed selection
+     *
+     * @param {DatePickerContext} context - The current context
+     * @param {DatePickerEvent} event - The event
+     * @returns {boolean} True if allowed
+     */
+    RANGE_START_SELECT: (context, event) => {
+      if (!isInteractive(context) || !isRangeMode(context)) {
+        return false;
+      }
+
+      const payload = event.payload as DateSelectPayload;
+      if (!payload?.date) {
+        return false;
+      }
+
+      return isDateInRange(payload.date, context.minDate, context.maxDate);
+    },
+
+    /**
      * Guard for range end selection
      *
      * @param {DatePickerContext} context - The current context

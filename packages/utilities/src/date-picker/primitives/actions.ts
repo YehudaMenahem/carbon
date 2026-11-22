@@ -479,10 +479,10 @@ export const actions: ActionMap = {
 
       return {
         ...commitRange(startDate, endDate),
-        isOpen: false,
+        isOpen: context.closeOnSelect ? false : context.isOpen,
         lastFocusedInput: 'to',
         restoreFocusTo: 'to',
-        shouldRestoreFocus: true,
+        shouldRestoreFocus: context.closeOnSelect,
       };
     },
     /**
@@ -499,9 +499,9 @@ export const actions: ActionMap = {
 
       return {
         ...commitRange(startDate, focusedDate),
-        isOpen: false,
+        isOpen: context.closeOnSelect ? false : context.isOpen,
         restoreFocusTo: 'to',
-        shouldRestoreFocus: true,
+        shouldRestoreFocus: context.closeOnSelect,
       };
     },
     ESCAPE_KEY: closeCalendarAndCancelRestore,
@@ -529,6 +529,26 @@ export const actions: ActionMap = {
       return commitSingleDate(context, date);
     },
     /**
+     * Restarting a range after a completed selection keeps the calendar open.
+     *
+     * @param {DatePickerContext} _context - Current context (unused)
+     * @param {DatePickerEvent} event - The event
+     * @returns {Partial<DatePickerContext>} Updated context
+     */
+    RANGE_START_SELECT: (_context, event) => {
+      const startDate = (event.payload as DateSelectPayload)?.date;
+      if (!startDate) {
+        return {};
+      }
+
+      return {
+        ...beginRange(startDate),
+        viewDate: startDate,
+        focusedDate: startDate,
+        isOpen: true,
+      };
+    },
+    /**
      * Re-picking an end date after a selection respects `closeOnSelect`
      *
      * @param {DatePickerContext} context - Current context
@@ -549,7 +569,30 @@ export const actions: ActionMap = {
         shouldRestoreFocus: context.closeOnSelect,
       };
     },
+    /**
+     * Enter selects the focused date while the calendar remains open after a
+     * prior selection (`closeOnSelect` false).
+     *
+     * @param {DatePickerContext} context - Current context
+     * @returns {Partial<DatePickerContext>} Updated context
+     */
+    ENTER_KEY: (context) =>
+      context.focusedDate && context.mode === 'single'
+        ? commitSingleDate(context, context.focusedDate)
+        : {},
+    CALENDAR_ICON_CLICK: openCalendar(focusSelectionOrView),
+    CALENDAR_OPEN: openCalendar(focusSelectionOrView),
+    OUTSIDE_CLICK: dismissCalendar,
+    ESCAPE_KEY: closeCalendar,
+    TAB_KEY: closeCalendar,
     CALENDAR_CLOSE: closeCalendarRestoringFocus,
+    ...monthNavigation,
+    PREV_YEAR: shiftView({ years: -1 }),
+    NEXT_YEAR: shiftView({ years: 1 }),
+    GO_TO_TODAY: () => ({ viewDate: Temporal.Now.plainDateISO() }),
+    ...gridNavigation,
+    PAGE_UP: shiftView({ months: -1 }, { carryFocus: true, bound: 'min' }),
+    PAGE_DOWN: shiftView({ months: 1 }, { carryFocus: true, bound: 'max' }),
   },
 
   [DatePickerState.DISABLED]: {
