@@ -2319,4 +2319,44 @@ describe('Date picker with minDate and maxDate', () => {
 
     document.body.removeChild(customContainer);
   });
+
+  it('should not reject when unmounted right after open with appendTo', async () => {
+    const customContainer = document.createElement('div');
+    customContainer.style.position = 'relative';
+    document.body.appendChild(customContainer);
+
+    const rejections = [];
+    const onUnhandledRejection = (reason, promise) => {
+      rejections.push(reason);
+      // Keep Jest from aborting the worker on the unhandled rejection under test
+      promise.catch(() => {});
+    };
+    process.on('unhandledRejection', onUnhandledRejection);
+
+    const { unmount } = render(
+      <DatePicker datePickerType="single" appendTo={customContainer}>
+        <DatePickerInput
+          id="date-picker-appendto-unmount"
+          placeholder="mm/dd/yyyy"
+          labelText="Label"
+          data-testid="date-picker-appendto-unmount"
+        />
+      </DatePicker>
+    );
+
+    // Use fireEvent so open queues the appendToPlugin microtask without
+    // awaiting (userEvent flushes microtasks and can finish positioning
+    // before unmount).
+    fireEvent.click(screen.getByTestId('date-picker-appendto-unmount'));
+    unmount();
+
+    // Flush the microtask queued by appendToPlugin's onPreCalendarPosition
+    await Promise.resolve();
+    await Promise.resolve();
+
+    process.off('unhandledRejection', onUnhandledRejection);
+    document.body.removeChild(customContainer);
+
+    expect(rejections).toEqual([]);
+  });
 });
